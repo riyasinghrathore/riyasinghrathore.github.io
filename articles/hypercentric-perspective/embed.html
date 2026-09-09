@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hypercentric renderer preview</title>
+<link rel="stylesheet" href="../../assets/css/site.css">
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--canvas-bg, #f3f1ec); }
+  /* the renderer fills the whole iframe viewport */
+  #stage { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="stage" aria-label="Live hypercentric renderer sweeping from perspective to hypercentric"></canvas>
+
+<!-- shared, extractable engine + mesh data (same files the article and the
+     standalone Hypercentrica repo use) -->
+<script src="../../assets/js/hyper-mesh.js"></script>
+<script src="../../assets/js/hyper-engine.js"></script>
+<script>
+  window.initHyperEngine(document.getElementById('stage'), {
+    interactive: false,   // thumbnails don't grab the pointer
+    autoplay: true,       // sweep g back and forth
+    autoCamera: true,     // slow dolly so it reads as 3D
+    showMesh: true
+  });
+</script>
+</body>
+</html>

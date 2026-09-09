@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Exclusive multiples: preview</title>
+<link rel="stylesheet" href="../assets/css/site.css">
+<style>
+  /* Local-only tokens: the shared sheet defines one accent hue (blue). This
+     visual needs a second, complementary hue to tell "divisible by a" apart
+     from "divisible by b" at a glance. --accent2 is scoped to this file and
+     follows the same light/dark switch as site.css's own --accent. */
+  :root { --accent2: #a8672f; }
+  @media (prefers-color-scheme: dark) { :root { --accent2: #e2ab73; } }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    background: var(--canvas-bg);
+  }
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .stage {
+    width: 100%;
+    height: 100%;
+    max-width: 480px;
+    max-height: 300px;
+  }
+  svg { display: block; width: 100%; height: 100%; }
+
+  .cap   { font-family: var(--font-sans); font-size: 10.5px; letter-spacing: 0.07em;
+           text-transform: uppercase; fill: var(--fg-faint); }
+  .sub   { font-family: var(--font-mono); font-size: 11px; fill: var(--fg-soft); }
+  .num   { font-family: var(--font-mono); font-size: 13px; text-anchor: middle; }
+  .rank  { font-family: var(--font-sans); font-weight: 600; font-size: 11px;
+           text-anchor: middle; fill: var(--accent); }
+  .legend-txt { font-family: var(--font-sans); font-size: 10.5px; fill: var(--fg-soft); }
+
+  .cell-a    { fill: var(--accent); }
+  .cell-b    { fill: var(--accent2); }
+  .cell-both { fill: var(--bg-soft); stroke: var(--fg-faint); stroke-width: 1; stroke-dasharray: 2 2; }
+  .cell-none { fill: var(--canvas-bg); stroke: var(--rule); stroke-width: 1; }
+
+  .txt-on-accent { fill: var(--bg); }
+  .txt-neutral   { fill: var(--fg-faint); }
+
+  .divider { stroke: var(--rule); stroke-width: 1; stroke-dasharray: 3 3; }
+</style>
+</head>
+<body>
+
+<div class="stage">
+<svg viewBox="0 0 480 300" preserveAspectRatio="xMidYMid meet" role="img"
+     aria-label="Number line from 1 to 12 showing the exclusive multiples of 2 and 3. The qualifying cells 2, 3, 4, 8, 9, 10 are labelled 1st through 6th; 6 and 12 are marked 'both, excluded'.">
+
+  <rect x="0" y="0" width="480" height="300" fill="var(--canvas-bg)"></rect>
+
+  <text x="24" y="26" class="cap">Exclusive multiples: divisible by a or b, not both</text>
+  <text x="24" y="44" class="sub">a = 2, b = 3, period = a&#183;b = 6</text>
+
+  <!-- static rank labels above each qualifying cell -->
+  <g class="rank">
+    <text x="76"  y="138">1st</text>
+    <text x="112" y="138">2nd</text>
+    <text x="148" y="138">3rd</text>
+    <text x="292" y="138">4th</text>
+    <text x="328" y="138">5th</text>
+    <text x="364" y="138">6th</text>
+  </g>
+
+  <!-- number line: one period (1-6) followed by a second period (7-12) -->
+  <g class="num">
+    <!-- 1 : neither -->
+    <rect class="cell-none" x="24" y="150" width="32" height="48" rx="6"/>
+    <text class="txt-neutral" x="40" y="179">1</text>
+    <!-- 2 : a only -->
+    <rect class="cell-a" x="60" y="150" width="32" height="48" rx="6"/>
+    <text class="txt-on-accent" x="76" y="179">2</text>
+    <!-- 3 : b only -->
+    <rect class="cell-b" x="96" y="150" width="32" height="48" rx="6"/>
+    <text class="txt-on-accent" x="112" y="179">3</text>
+    <!-- 4 : a only -->
+    <rect class="cell-a" x="132" y="150" width="32" height="48" rx="6"/>
+    <text class="txt-on-accent" x="148" y="179">4</text>
+    <!-- 5 : neither -->
+    <rect class="cell-none" x="168" y="150" width="32" height="48" rx="6"/>
+    <text class="txt-neutral" x="184" y="179">5</text>
+    <!-- 6 : both, excluded -->
+    <rect class="cell-both" x="204" y="150" width="32" height="48" rx="6"/>
+    <text class="txt-neutral" x="220" y="179">6</text>
+
+    <!-- 7 : neither -->
+    <rect class="cell-none" x="240" y="150" width="32" height="48" rx="6"/>
+    <text class="txt-neutral" x="256" y="179">7</text>
+    <!-- 8 : a only -->
+    <rect class="cell-a" x="276" y="150" width="32" height="48" rx="6"/>
+    <text class="txt-on-accent" x="292" y="179">8</text>
+    <!-- 9 : b only -->
+    <rect class="cell-b" x="312" y="150" width="32" height="48" rx="6"/>
+    <text class="txt-on-accent" x="328" y="179">9</text>
+    <!-- 10 : a only -->
+    <rect class="cell-a" x="348" y="150" width="32" height="48" rx="6"/>
+    <text class="txt-on-accent" x="364" y="179">10</text>
+    <!-- 11 : neither -->
+    <rect class="cell-none" x="384" y="150" width="32" height="48" rx="6"/>
+    <text class="txt-neutral" x="400" y="179">11</text>
+    <!-- 12 : both, excluded -->
+    <rect class="cell-both" x="420" y="150" width="32" height="48" rx="6"/>
+    <text class="txt-neutral" x="436" y="179">12</text>
+  </g>
+
+  <!-- period divider -->
+  <line class="divider" x1="238" y1="142" x2="238" y2="208"/>
+
+  <!-- legend -->
+  <g class="legend-txt">
+    <rect x="24"  y="234" width="11" height="11" rx="2" class="cell-a"/>
+    <text x="40" y="243">a only</text>
+
+    <rect x="112" y="234" width="11" height="11" rx="2" class="cell-b"/>
+    <text x="128" y="243">b only</text>
+
+    <rect x="200" y="234" width="11" height="11" rx="2" class="cell-both"/>
+    <text x="216" y="243">both, excluded</text>
+
+    <rect x="340" y="234" width="11" height="11" rx="2" class="cell-none"/>
+    <text x="356" y="243">neither</text>
+  </g>
+
+  <text x="24" y="270" class="sub" style="font-size:10.5px;">
+    sequence: 2, 3, 4, 8, 9, 10, ... repeats every 6
+  </text>
+
+</svg>
+</div>
+
+</body>
+</html>

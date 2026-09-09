@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fluid simulation preview</title>
+
+<style>
+  :root {
+    --bg:          #faf6f0;
+    --bg-soft:     #efe9df;
+    --fg:          #1c1b18;
+    --fg-soft:     #4d4a44;
+    --fg-faint:    #8a8377;
+    --rule:        #d8d1c4;
+    --accent:      #9a5b2e;
+    --accent-soft: #ede2d2;
+    --link:        #9a5b2e;
+  }
+  html { color-scheme: light; }
+  body { background: #faf6f0; margin: 0; overflow: hidden; }
+
+  /* the simulation fills the whole iframe viewport */
+  .simulation-bg {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 0; background: #faf6f0;
+  }
+  .simulation-bg canvas { display: block; width: 100% !important; height: 100% !important; }
+
+  /* fluid.js needs this element to exist to build its Tweakpane, but we
+     never want the controls panel visible in the embedded preview */
+  #controls-container { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="simulation-bg" id="simulation-container"></div>
+<div id="controls-container"></div>
+
+<!-- the live simulation (independent of the article text) -->
+<script src="https://cdn.jsdelivr.net/npm/tweakpane@3.1.1/dist/tweakpane.js"></script>
+<script src="../../assets/lib/gpu-io.js"></script>
+<script src="../../assets/js/fluid.js"></script>
+</body>
+</html>

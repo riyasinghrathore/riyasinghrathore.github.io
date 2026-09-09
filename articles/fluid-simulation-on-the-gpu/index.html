@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The little fluid that lives in your browser · Riya Singh Rathore</title>
+<meta name="description" content="A real fluid simulation you can stir with your mouse, and a careful account of how it works: the incompressible Navier–Stokes equations, operator splitting, semi-Lagrangian advection, the pressure projection, and the GPU loop that runs it live.">
+<link rel="stylesheet" href="../../assets/css/site.css">
+<!-- KaTeX for math typesetting -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
+
+<style>
+  /* This page floats over a live particle fluid painted on warm paper, so
+     it keeps the light palette no matter what the operating system prefers. */
+  :root {
+    --bg:          #faf6f0;
+    --bg-soft:     #efe9df;
+    --fg:          #1c1b18;
+    --fg-soft:     #4d4a44;
+    --fg-faint:    #8a8377;
+    --rule:        #d8d1c4;
+    --accent:      #9a5b2e;
+    --accent-soft: #ede2d2;
+    --link:        #9a5b2e;
+  }
+  html { color-scheme: light; }
+  body { background: #faf6f0; }
+
+  /* the simulation fills the whole window and sits behind everything */
+  .simulation-bg {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    z-index: -1; background: #faf6f0;
+  }
+  .simulation-bg canvas { display: block; width: 100% !important; height: 100% !important; }
+
+  /* the tweakpane controls, pinned to the top right just like my home page */
+  #controls-container { position: fixed; top: 24px; right: 24px; z-index: 100; }
+  .tp-dfwv {
+    --tp-base-background-color: hsla(220, 30%, 8%, 0.92) !important;
+    --tp-base-shadow-color: hsla(0, 0%, 0%, 0.4) !important;
+    --tp-button-background-color: hsla(220, 20%, 18%, 1) !important;
+    --tp-button-background-color-active: hsla(220, 20%, 25%, 1) !important;
+    --tp-button-background-color-focus: hsla(220, 20%, 22%, 1) !important;
+    --tp-button-background-color-hover: hsla(220, 20%, 25%, 1) !important;
+    --tp-button-foreground-color: hsla(40, 30%, 85%, 1) !important;
+    --tp-container-background-color: hsla(220, 25%, 12%, 1) !important;
+    --tp-container-background-color-active: hsla(220, 25%, 15%, 1) !important;
+    --tp-container-background-color-focus: hsla(220, 25%, 13%, 1) !important;
+    --tp-container-background-color-hover: hsla(220, 25%, 15%, 1) !important;
+    --tp-container-foreground-color: hsla(40, 20%, 70%, 1) !important;
+    --tp-groove-foreground-color: hsla(40, 30%, 75%, 0.2) !important;
+    --tp-input-background-color: hsla(220, 25%, 15%, 1) !important;
+    --tp-input-background-color-active: hsla(220, 25%, 18%, 1) !important;
+    --tp-input-background-color-focus: hsla(220, 25%, 16%, 1) !important;
+    --tp-input-background-color-hover: hsla(220, 25%, 18%, 1) !important;
+    --tp-input-foreground-color: hsla(40, 30%, 90%, 1) !important;
+    --tp-label-foreground-color: hsla(40, 20%, 65%, 1) !important;
+    --tp-monitor-background-color: hsla(220, 25%, 12%, 1) !important;
+    --tp-monitor-foreground-color: hsla(40, 20%, 70%, 1) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    border-radius: 12px !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+  }
+  .tp-dfwv .tp-fldv_t { font-weight: 600 !important; letter-spacing: 0.02em !important; }
+  ::selection { background: #e8d5b7; color: #0a0f1c; }
+
+  /* the reading column: a sheet of warm paper laid over the moving fluid */
+  main.wrap {
+    background: rgba(251, 249, 245, 0.85);
+    -webkit-backdrop-filter: blur(6px) saturate(1.05);
+    backdrop-filter: blur(6px) saturate(1.05);
+    border: 1px solid rgba(28, 27, 24, 0.08);
+    border-radius: 16px;
+    padding: 2.6rem 2.2rem 3.6rem;
+    margin-top: 1.4rem; margin-bottom: 6rem;
+    box-shadow: 0 24px 70px rgba(60, 50, 35, 0.18);
+  }
+  @media (max-width: 30rem) { main.wrap { padding: 1.8rem 1.3rem 2.6rem; border-radius: 12px; } }
+  main.wrap h2 { color: var(--accent); }
+
+  .site-head, .site-foot { text-shadow: 0 1px 10px rgba(250, 246, 240, 0.9); }
+
+  /* content-specific bits the markdown produces */
+  #article .lead { font-size: 1.18rem; color: var(--fg-soft); margin-bottom: 1.2rem; }
+  #article .stir-hint {
+    font-family: var(--font-sans); font-size: 0.82rem; color: var(--fg-faint);
+    letter-spacing: 0.02em; margin: 0.4rem 0 1.6rem;
+  }
+  #article .byline { font-family: var(--font-sans); font-size: 0.86rem; color: var(--fg-faint); margin: 0 0 1.8rem; }
+  #article .byline .dot { margin: 0 0.5em; opacity: 0.6; }
+  #article figure { margin: 2rem 0; }
+  #article figure img {
+    display: block; width: 100%; height: auto; border-radius: 10px;
+    border: 1px solid var(--rule); box-shadow: 0 10px 30px rgba(60, 50, 35, 0.16); background: #fff;
+  }
+  #article figcaption {
+    font-family: var(--font-sans); font-size: 0.82rem; color: var(--fg-faint);
+    margin-top: 0.6rem; line-height: 1.5;
+  }
+  #article .katex-display { overflow-x: auto; overflow-y: hidden; padding: 0.3rem 0; }
+</style>
+</head>
+<body>
+
+<div class="simulation-bg" id="simulation-container"></div>
+<div id="controls-container"></div>
+
+<header class="site-head">
+  <a class="brand" href="../../index.html">Riya Singh Rathore</a>
+  <nav class="site-nav">
+    <a href="../../index.html">Writing</a>
+    <a href="../../index.html#about">About</a>
+  </nav>
+</header>
+
+<main class="wrap">
+  <p class="backlink"><a href="../../index.html">&larr; all writing</a></p>
+  <div id="article" data-src="content.md">Loading…</div>
+</main>
+
+<footer class="site-foot">
+  <span>© 2026 Riya Singh Rathore</span>
+  <span><a href="../../index.html">Writing</a> · <a href="../../index.html#about">About</a></span>
+</footer>
+
+<!-- the live simulation (independent of the article text) -->
+<script src="https://cdn.jsdelivr.net/npm/tweakpane@3.1.1/dist/tweakpane.js"></script>
+<script src="../../assets/lib/gpu-io.js"></script>
+<script src="../../assets/js/fluid.js"></script>
+
+<!-- render the Markdown article + typeset its maths -->
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
+<script defer src="../../assets/js/md-article.js"></script>
+</body>
+</html>

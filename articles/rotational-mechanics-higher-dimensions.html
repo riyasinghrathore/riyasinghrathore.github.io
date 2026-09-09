@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rotation Doesn't Need an Axis · Riya Singh Rathore</title>
+<meta name="description" content="Rotation is a property of a hyperplane, not an axis. Once you accept that, the school-physics toolkit (center of mass, moment of inertia, the parallel and perpendicular axis theorems) follows a solid hemisphere all the way up into n dimensions.">
+<link rel="stylesheet" href="../assets/css/site.css">
+<!-- KaTeX for math typesetting -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"
+        onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\(',right:'\\)',display:false},{left:'\\[',right:'\\]',display:true}]});"></script>
+<style>
+  table.dims {
+    width: 100%; border-collapse: collapse; margin: 1.4rem 0;
+    font-size: 0.95rem;
+  }
+  table.dims th, table.dims td {
+    text-align: left; padding: 0.45rem 0.7rem;
+    border-bottom: 1px solid var(--rule);
+  }
+  table.dims thead th { color: var(--fg-soft); font-weight: 600; }
+  table.dims td:first-child { color: var(--fg-soft); }
+  .ref {
+    font-family: var(--font-sans); font-size: 0.86rem; color: var(--fg-soft);
+    border-left: 3px solid var(--rule); padding: 0.2rem 0 0.2rem 1rem; margin: 1.6rem 0;
+  }
+
+  /* --- the inertia tensor, drawn as a matrix ------------------------- */
+  .mtx-fig { display: flex; align-items: center; justify-content: center; gap: 0.9rem; margin: 0.4rem 0 0.2rem; }
+  .mtx-lhs { font-size: 1.2rem; }
+  .mtx {
+    position: relative; display: grid;
+    grid-template-columns: repeat(3, 3.7rem); gap: 6px; padding: 8px 15px;
+  }
+  .mtx::before, .mtx::after {
+    content: ""; position: absolute; top: 0; bottom: 0; width: 10px;
+    border: 2px solid var(--fg-soft);
+  }
+  .mtx::before { left: 0; border-right: none; }
+  .mtx::after { right: 0; border-left: none; }
+  .mtx-cell {
+    display: flex; align-items: center; justify-content: center;
+    height: 2.7rem; border-radius: 5px; font-size: 0.9rem;
+  }
+  .mtx-cell.diag { background: var(--accent-soft); color: var(--fg); font-weight: 600; }
+  .mtx-cell.off  { background: var(--bg-soft); color: var(--fg-faint); }
+
+  /* --- a stated exam problem, set off as a callout ------------------- */
+  .problem {
+    font-style: italic; background: var(--bg-soft);
+    border: 1px solid var(--rule); border-radius: 8px;
+    padding: 0.75rem 1.1rem; margin: 1.2rem 0;
+  }
+
+  /* --- the rocking-hemisphere setup, animated (manim; scripts/rocking_hemisphere.py) --- */
+  .setup { display: block; width: 100%; max-width: 520px; height: auto; margin: 0.4rem auto;
+           border: 1px solid var(--rule); border-radius: 10px; background: var(--canvas-bg); }
+</style>
+</head>
+<body>
+
+<header class="site-head">
+  <a class="brand" href="../index.html">Riya Singh Rathore</a>
+  <nav class="site-nav">
+    <a href="../index.html">Writing</a>
+    <a href="../index.html#about">About</a>
+  </nav>
+</header>
+
+<main class="wrap">
+  <p class="backlink"><a href="../index.html">&larr; all writing</a></p>
+
+  <h1>Rotation doesn't need an axis</h1>
+  <p class="stir-hint">Drag the sliders to spin each solid about an axis; the last one flattens it onto the page.</p>
+
+  <figure class="viz-fig wide">
+    <div class="viz">
+      <iframe src="https://www.desmos.com/calculator/nzwc4gbdh5?embed"
+              width="100%" height="560" frameborder="0"
+              style="border: 1px solid var(--rule); border-radius: 8px; display: block;"
+              title="Interactive 3D rotation of the tetrahedron, cube, and icosahedron"
+              allowfullscreen></iframe>
+    </div>
+    <figcaption>Three Platonic solids turning in three dimensions. How hard each one is to spin about a given axis is its moment of inertia, and that is the thread this article pulls on until it reaches dimensions we cannot draw.</figcaption>
+  </figure>
+
+  <p class="lead">Spin something in three dimensions and you can always point to an axis it turns around. That is a lucky accident of living in 3D, not a law. A rotation really happens in a <em>hyperplane</em>, and the axis is just the leftover direction the hyperplane does not touch. Once you stop insisting on an axis, something nice happens: most of the mechanics you met in school stops caring how many dimensions you are in.</p>
+
+  <p>Center of mass, moment of inertia, the parallel-axis and perpendicular-axis theorems, all of it survives the jump to $n$ dimensions almost word for word. I want to show that on the cleanest test object I know, a solid hemisphere, grown up to $n$ dimensions.</p>
+
+  <h2>A hemisphere in n dimensions</h2>
+  <p>The solid ball of radius $R$ in $n$ dimensions is just every point within $R$ of the origin, $x_1^2 + \dots + x_n^2 \le R^2$. For $n = 2$ it is a disk, for $n = 3$ an ordinary ball, and past that it is the thing we can compute with but not picture. Slice off the half with $x_n \ge 0$ and you have the $n$-hemisphere: a half-disk, then a dome, then onward. Give it uniform density, so mass is density times volume, and every question about balance and spin becomes geometry.</p>
+  <p>One fact does most of the work. A flat slice through the ball at height $x_n = t$ is itself a smaller ball, the $(n-1)$-ball of radius $\sqrt{R^2 - t^2}$. Stack those slices and you can integrate anything.</p>
+
+  <h2>Volume</h2>
+  <p>Stacking the slices gives the volume as one integral, and the recursion it sets up collapses to a single formula:</p>
+  <p>$$ V_n(R) = \frac{\pi^{n/2}}{\Gamma\!\left(\tfrac{n}{2}+1\right)}\, R^n, \qquad \text{hemisphere} = \tfrac12 V_n(R). $$</p>
+  <p>The $\Gamma$ is the gamma function, the factorial stretched to fit non-integer inputs, with $\Gamma(m+1) = m!$ and $\Gamma(\tfrac12) = \sqrt{\pi}$. It has to be there: the formula must make sense for every $n$, and only $\Gamma$ smooths the factorials out that far. It lands where it should.</p>
+  <table class="dims">
+    <thead><tr><th>$n$</th><th>object</th><th>ball $V_n(R)$</th><th>hemisphere</th></tr></thead>
+    <tbody>
+      <tr><td>$2$</td><td>disk</td><td>$\pi R^2$</td><td>$\tfrac12 \pi R^2$</td></tr>
+      <tr><td>$3$</td><td>ball</td><td>$\tfrac43 \pi R^3$</td><td>$\tfrac23 \pi R^3$</td></tr>
+      <tr><td>$4$</td><td>4-ball</td><td>$\tfrac12 \pi^2 R^4$</td><td>$\tfrac14 \pi^2 R^4$</td></tr>
+      <tr><td>$n$</td><td>$n$-ball</td><td>$\dfrac{\pi^{n/2}}{\Gamma\!\left(\tfrac{n}{2}+1\right)}R^n$</td><td>$\dfrac{\pi^{n/2}}{2\,\Gamma\!\left(\tfrac{n}{2}+1\right)}R^n$</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Center of mass</h2>
+  <p>By symmetry the balance point sits somewhere on the cut's axis, a height $\bar{x}$ up. Center of mass is the average position weighted by mass, and with uniform density the density cancels, leaving a ratio of two slice integrals: the moment about the flat face over the volume. Written with the height $t$ as the variable,</p>
+  <p>$$ \bar{x} = \frac{\displaystyle\int_{0}^{R} t\,(R^2 - t^2)^{\frac{n-1}{2}}\, dt}{\displaystyle\int_{0}^{R} (R^2 - t^2)^{\frac{n-1}{2}}\, dt}. $$</p>
+  <p>Both integrals are Beta functions once you substitute $u = (t/R)^2$, and the answer comes out cleaner than it has any right to:</p>
+  <p>$$ \boxed{\;\bar{x} \;=\; R\,\frac{B\!\left(1,\ \tfrac{n+1}{2}\right)}{B\!\left(\tfrac12,\ \tfrac{n+1}{2}\right)} \;=\; \frac{2R}{\,n+1\,}\cdot\frac{\Gamma\!\left(\tfrac{n}{2}+1\right)}{\sqrt{\pi}\;\Gamma\!\left(\tfrac{n+1}{2}\right)}\;} $$</p>
+  <p>The two Beta functions differ only by swapping a $\tfrac12$ for a $1$ in the first slot. That is the whole centroid. And the cases we already know fall right out of it:</p>
+  <table class="dims">
+    <thead><tr><th>$n$</th><th>hemisphere</th><th>$\bar{x}$</th><th>decimal</th></tr></thead>
+    <tbody>
+      <tr><td>$2$</td><td>half-disk</td><td>$\dfrac{4R}{3\pi}$</td><td>$0.424\,R$</td></tr>
+      <tr><td>$3$</td><td>dome</td><td>$\dfrac{3R}{8}$</td><td>$0.375\,R$</td></tr>
+      <tr><td>$4$</td><td>4-hemisphere</td><td>$\dfrac{16R}{15\pi}$</td><td>$0.339\,R$</td></tr>
+      <tr><td>$n$</td><td>$n$-hemisphere</td><td>$\dfrac{2R}{n+1}\cdot\dfrac{\Gamma\!\left(\tfrac{n}{2}+1\right)}{\sqrt{\pi}\,\Gamma\!\left(\tfrac{n+1}{2}\right)}$</td><td>$\sim R\sqrt{\tfrac{2}{\pi n}}$</td></tr>
+    </tbody>
+  </table>
+  <p>The half-disk's $4R/3\pi$ and the dome's $3R/8$ are the exact values I once memorised for exams, here as two lines of one formula. And $\bar{x}$ keeps shrinking as $n$ grows, roughly like $R\sqrt{2/\pi n}$, because in high dimensions almost all of a ball's volume crowds toward its equator. The everyday dome, balancing a comfortable $3R/8$ off the floor, turns out to be one of the more top-heavy members of the family.</p>
+
+  <p class="ref">There is a way to get these with no integral at all, and it is my favourite. In Chapter 5 of <em>The Mathematical Mechanic</em>, Mark Levi finds the semicircle's centroid by hanging it on a pivot, tilting it a hair, and equating the work done two ways; the calculus never shows up, and $2R/\pi$ just appears. He does the half-disk the same way, and his piston-against-a-vacuum proof of Pappus's theorem is exactly the trick for climbing one dimension at a time. I worked out the $n$-dimensional versions in my notebook the same physical way; the integrals above are just the tidy bookkeeping of that.</p>
+
+  <h2>The parallel and perpendicular axis theorems</h2>
+  <p>Now the spinning. Moment of inertia about a line is the mass-weighted total of the squared distance to that line, and squared distance to a line is something every dimension understands. For an axis through the origin in the unit direction $\mathbf{u}$,</p>
+  <p>$$ I_{\mathbf{u}} = \int \rho\,\big(|\mathbf{x}|^2 - (\mathbf{x}\cdot\mathbf{u})^2\big)\, dV. $$</p>
+  <p>Nothing in there mentions three. It reads the same for a lamina, a ball, or a solid in $\mathbb{R}^{100}$.</p>
+  <p><strong>Parallel axis.</strong> Split each position as $\mathbf{x} = \mathbf{c} + \mathbf{x}'$, with $\mathbf{c}$ the center of mass. Expand, and the cross term carries a factor $\int \rho\,\mathbf{x}'\,dV$, which is zero because that is what "center of mass" means. What is left is the theorem, unchanged in any dimension:</p>
+  <p>$$ I = I_{\text{cm}} + M d^2. $$</p>
+  <p><strong>Perpendicular axis.</strong> Name the second moment about each coordinate hyperplane, $A_i = \int \rho\, x_i^2\, dV$. Then the moment about the $x_k$ axis is just the sum of the others, $I_k = \sum_{i \ne k} A_i$. Add these over all $n$ axes and each $A_i$ is skipped exactly once, so $\sum_k I_k = (n-1)\int \rho\,|\mathbf{x}|^2\,dV$. The school version $I_z = I_x + I_y$ is simply the $n = 2$ line of this.</p>
+
+  <h2>A worked example</h2>
+  <p>Now let me put all four tools to work in one problem. Here is a small classic that needs every one of them: sit a uniform solid hemisphere flat-face up on a table, so it balances on the round of its dome, give it a nudge, and it rocks. How fast?</p>
+  <p class="problem">A uniform solid hemisphere of mass $M$ and radius $R$ rests on its curved face on a level table and rolls without slipping. Displaced slightly, it rocks back and forth. Find the period of small oscillations.</p>
+
+  <figure class="viz-fig">
+    <video class="setup" autoplay loop muted playsinline preload="metadata"
+           poster="../assets/video/rocking-hemisphere.poster.png"
+           aria-label="A uniform solid hemisphere rocking without slipping on a level table. Its center O rides along a level line, staying a height R above the table for every tilt; the center of mass, a distance three-eighths R below O, swings on a shallow arc and sits lowest when the hemisphere is upright; the weight Mg hangs straight down from it through the contact point, which slides along the table.">
+      <source src="../assets/video/rocking-hemisphere.webm" type="video/webm">
+      <source src="../assets/video/rocking-hemisphere.mp4" type="video/mp4">
+    </video>
+  </figure>
+
+  <p>All four ideas walk in. The mass is density times the half-ball <strong>volume</strong>, $M=\rho\cdot\tfrac12 V_n(R)$. The restoring pull is set by the <strong>center of mass</strong>, a distance $b=\bar{x}$ from the sphere's center $O$, the same $\bar{x}$ we balanced earlier. And the resistance to rocking is a moment of inertia about the contact point, which the two theorems assemble in three steps.</p>
+  <p>Because the hemisphere has all its second moments equal per unit mass, the <strong>perpendicular-axis</strong> rule gives its moment about any axis through $O$ as $\tfrac{n-1}{n+2}MR^2$, which is $\tfrac25 MR^2$ in three dimensions. The <strong>parallel-axis</strong> theorem drops that to the center of mass, and a second parallel shift carries it out to the contact point, a distance $R-b$ below:</p>
+  <p>$$ I_{\text{cm}} = \frac{n-1}{\,n+2\,}MR^2 - Mb^2, \qquad I_{\text{contact}} = I_{\text{cm}} + M(R-b)^2 = \frac{2n+1}{\,n+2\,}MR^2 - 2MRb. $$</p>
+  <p>The rest is one line of energy. Tilt by a small angle $\theta$ and the center of mass lifts to height $R-b\cos\theta$, so the potential energy is $Mg(R-b\cos\theta)\approx\text{const}+\tfrac12 Mgb\,\theta^2$, while the kinetic energy is $\tfrac12 I_{\text{contact}}\,\dot\theta^2$. That is a plain harmonic oscillator, and its frequency reads straight off:</p>
+  <p>$$ \boxed{\;\omega^2 \;=\; \frac{Mgb}{I_{\text{contact}}} \;=\; \frac{gb}{\dfrac{2n+1}{\,n+2\,}R^2 - 2Rb}\;} $$</p>
+  <p>In three dimensions $b=\tfrac38 R$, so $I_{\text{contact}} = \tfrac75 MR^2 - \tfrac34 MR^2 = \tfrac{13}{20}MR^2$ and $\omega^2 = \tfrac{15g}{26R}$, giving the period a first-year problem set would ask for:</p>
+  <p>$$ T = 2\pi\sqrt{\frac{26R}{15g}}. $$</p>
+  <p>Every number feeding that $26/15$, the mass from a volume, the $b$ from a balance point, the two theorems stacked into $I_{\text{contact}}$, is one we wrote with $n$ as a letter. So the $n$-dimensional hemisphere rocks too, at the frequency above with $b$ the Beta-function centroid from before. We can never sit one on a table, but we can say exactly how fast it would rock if we could.</p>
+
+  <h2>It was linear algebra the whole time</h2>
+  <p>The reason none of this breaks is that moment of inertia was never really one number. It is a matrix. Bundle the second moments and their cross terms into $S_{ij} = \int\rho\,x_i x_j\,dV$, and the <strong>inertia tensor</strong> is</p>
+  <p>$$ J = \operatorname{tr}(S)\,\mathbf{I} - S, \qquad I_{\mathbf{u}} = \mathbf{u}^{\mathsf{T}} J\, \mathbf{u}. $$</p>
+  <p>It is worth drawing that matrix out, because the two theorems are hiding in its shape. Here it is in three dimensions:</p>
+
+  <figure class="viz-fig">
+    <div class="mtx-fig">
+      <span class="mtx-lhs">$J \,=$</span>
+      <div class="mtx">
+        <div class="mtx-cell diag">$I_1$</div>
+        <div class="mtx-cell off">$-P_{12}$</div>
+        <div class="mtx-cell off">$-P_{13}$</div>
+        <div class="mtx-cell off">$-P_{12}$</div>
+        <div class="mtx-cell diag">$I_2$</div>
+        <div class="mtx-cell off">$-P_{23}$</div>
+        <div class="mtx-cell off">$-P_{13}$</div>
+        <div class="mtx-cell off">$-P_{23}$</div>
+        <div class="mtx-cell diag">$I_3$</div>
+      </div>
+    </div>
+    <figcaption>The shaded diagonal holds the moments of inertia, and each one is $I_k=\sum_{i\ne k}A_i$: the perpendicular-axis theorem, sitting on the diagonal in plain sight. The faint off-diagonal cells are the products of inertia $P_{ij}=\int\rho\,x_i x_j\,dV$, which measure how lopsided the body is about the axes you happened to pick. Rotate to the principal axes (the eigenvectors of $J$) and every off-diagonal cell drops to zero, leaving a clean diagonal matrix.</figcaption>
+  </figure>
+
+  <p>So both theorems are really statements about this matrix. The perpendicular-axis identity is just its trace, which no change of basis can touch. The parallel-axis theorem is a rank-one shift of it. And the directions a body spins about without wobbling, its principal axes, are the eigenvectors of $J$. A symmetric matrix always has a full set of orthogonal eigenvectors, so a body in $\mathbb{R}^n$ always has $n$ clean principal axes, however unpicturable it is.</p>
+
+  <h2>Back to where we started</h2>
+  <p>The inertia tensor is only half of spinning; it pairs with the rotation, and the rotation is the part that never needed an axis. As a matrix, a rotation in a single plane, say the one spanned by $x_1$ and $x_2$, is just a $2\times2$ turn tucked into an identity that leaves every other direction alone:</p>
+  <p>$$ R = \begin{pmatrix} \cos\theta & -\sin\theta & 0 & \cdots \\ \sin\theta & \cos\theta & 0 & \cdots \\ 0 & 0 & 1 & \\ \vdots & \vdots & & \ddots \end{pmatrix}. $$</p>
+  <p>That $2\times2$ block is the whole rotation; everything outside it sits still, which is the exact sense in which a plane, and not an axis, is the thing that turns. A general rotation is several of these blocks stacked down the diagonal, one per plane, and in $n$ dimensions there are $\binom{n}{2}$ independent planes to fill but only $n$ directions to point an axis along. Those two counts happen to agree in exactly one case, $n=3$, where both equal three, and that single coincidence is the whole reason we ever get away with naming an axis. Everywhere else the planes outnumber the directions, and the gap only widens: since $\binom{n}{2}$ grows like $n^2$ while the directions grow like $n$, the higher you go the more hopeless a single axis becomes. Four dimensions is just the first place it fails, with six planes against four directions. The hypercube below is that smallest breaking case, turning in more than one plane at once.</p>
+
+  <figure class="viz-fig wide">
+    <div class="viz">
+      <iframe src="https://www.desmos.com/calculator/c21iftnb3m?embed"
+              width="100%" height="560" frameborder="0"
+              style="border: 1px solid var(--rule); border-radius: 8px; display: block;"
+              title="Interactive hypercube rotating in the six planes of four dimensions"
+              allowfullscreen></iframe>
+    </div>
+    <figcaption>A hypercube turning through the six rotation planes of four dimensions. Set every slider but one to zero to watch a single plane's spin, the higher-dimensional cousin of picking one axis for the solids at the top.</figcaption>
+  </figure>
+
+  <p>So a body in any number of dimensions has a place where it balances and a matrix that says how it spins, and the rules for moving between axes are the same two theorems, with $n$ left as a letter. The hemisphere makes it concrete: a volume that is a gamma function, a balance point that is a ratio of Betas, and a moment of inertia that is just those two facts glued together by the parallel-axis theorem. What looked like three-dimensional physics was linear algebra all along, and linear algebra does not count your dimensions.</p>
+
+</main>
+
+<footer class="site-foot">
+  <span>© 2026 Riya Singh Rathore</span>
+  <span><a href="../index.html">Writing</a> · <a href="../index.html#about">About</a></span>
+</footer>
+
+</body>
+</html>

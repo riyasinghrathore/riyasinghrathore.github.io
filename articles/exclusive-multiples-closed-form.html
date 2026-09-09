@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The n-th Exclusive Multiple in O(1) · Riya Singh Rathore</title>
+<meta name="description" content="A closed-form O(1) formula for the n-th positive integer divisible by exactly one of two coprime numbers, with a reference Java implementation.">
+<link rel="stylesheet" href="../assets/css/site.css">
+<!-- KaTeX for math typesetting -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"
+        onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\(',right:'\\)',display:false},{left:'\\[',right:'\\]',display:true}]});"></script>
+<style>
+  /* Page-local additions only. Shared style.css is untouched. */
+  .formula-box { margin: 1.6rem 0; padding: 1.05rem 1.3rem 1.2rem;
+    background: var(--bg-soft); border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent); border-radius: 8px; }
+  .formula-box .fb-label { font-family: var(--font-sans); font-size: 0.72rem; letter-spacing: 0.07em;
+    text-transform: uppercase; color: var(--accent); font-weight: 620; margin: 0 0 0.4rem; }
+  .formula-box .katex-display { margin: 0.4rem 0; overflow-x: auto; overflow-y: hidden; }
+</style>
+</head>
+<body>
+
+<header class="site-head">
+  <a class="brand" href="../index.html">Riya Singh Rathore</a>
+  <nav class="site-nav">
+    <a href="../index.html">Writing</a>
+    <a href="../index.html#about">About</a>
+  </nav>
+</header>
+
+<main class="wrap">
+  <p class="backlink"><a href="../index.html">&larr; all writing</a></p>
+
+  <h1>The n-th Exclusive Multiple in O(1)</h1>
+
+  <p class="lead">Given two coprime numbers, jump straight to the n-th integer divisible by exactly one of them, with no search and no loop over candidates: just a handful of arithmetic operations.</p>
+
+  <h2>The problem</h2>
+  <p>
+    Fix two coprime integers $a, b > 1$ with $a < b$, and a positive integer $n$. Find the $n$-th smallest
+    positive integer that is divisible by $a$ or by $b$, but not both.
+  </p>
+  <p>
+    For $a=2, b=3$ the qualifying integers start $2, 3, 4, 8, 9, 10, 14, 15, 16, \dots$ ($6$ and $12$ are
+    skipped, since they are multiples of both).
+  </p>
+
+  <h2>The O(1) formula</h2>
+  <p>
+    The qualifying integers are periodic with period $ab$, with exactly $S = a+b-2$ of them per period. Peel
+    off the whole periods that sit below the answer, then place the leftover rank inside the final window in
+    closed form:
+  </p>
+  <div class="formula-box">
+    <p class="fb-label">Closed form</p>
+    $$ \begin{aligned}
+      S &= a+b-2, \qquad r = n \bmod S, \qquad \text{filler} = \left\lfloor \tfrac{n}{S} \right\rfloor ab, \\[6pt]
+      i &= \left\lfloor \frac{r\,b}{a+b} \right\rfloor, \qquad\quad j = \left\lfloor \frac{r\,a}{a+b} \right\rfloor, \\[6pt]
+      E(n) &= \text{filler} \,+\, \min\!\big(a\,(i{+}1),\; b\,(j{+}1)\big).
+    \end{aligned} $$
+  </div>
+  <p>
+    Two edge cases fold in cleanly: if $n\,a < b$ the first $n$ multiples of $a$ all precede $b$, so the answer
+    is simply $n\,a$; and if $r = 0$ the answer lands exactly on a window boundary, at $\text{filler} - a$.
+    Everything here is $O(1)$: independent of $n$ and of the magnitudes of $a$ and $b$.
+  </p>
+
+  <h2>The code</h2>
+  <pre><code>// n is 1-indexed; a &lt; b, gcd(a,b) = 1, a &gt; 1
+long trUE_n_Smallest_AB(long a, long b, long n) {
+    if (n * a < b)  return n * a;
+    if (n * a == b) return a * (n + 1);      // defensive; unreachable given a>1, gcd(a,b)=1
+
+    long filler = 0, sum = 0;
+    if (n > a + b - 2) {
+        sum = a + b - 2;
+        filler = (n / sum) * a * b;
+        n %= sum;
+    }
+    if (n == 0) return filler - a;           // landed exactly on a window boundary
+
+    long rat_a = (n * b) / (a + b);          // estimated multiples of a consumed
+    long rat_b = (n * a) / (a + b);          // estimated multiples of b consumed
+
+    if (a * rat_a > b * rat_b)
+        return Math.min(a * rat_a + a, b * rat_b + b) + filler;
+    else
+        return a * rat_a + a + filler;
+}</code></pre>
+
+  <h2>Related problems</h2>
+  <p>
+    The union cousins of this problem, "divisible by at least one," are two common interview questions:
+  </p>
+  <ul>
+    <li><a href="https://leetcode.com/problems/nth-magical-number/">Nth Magical Number</a> (the $n$-th integer divisible by $a$ or $b$).</li>
+    <li><a href="https://leetcode.com/problems/ugly-number-iii/">Ugly Number III</a> (divisible by $a$, $b$, or $c$).</li>
+  </ul>
+
+</main>
+
+<footer class="site-foot">
+  <span>© 2026 Riya Singh Rathore</span>
+  <span><a href="../index.html">Writing</a> · <a href="../index.html#about">About</a></span>
+</footer>
+
+</body>
+</html>

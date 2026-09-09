@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shift Left: Accessibility at Pull-Request Time · Riya Singh Rathore</title>
+<meta name="description" content="The architecture of an accessibility analyzer that runs before code lands: shift-left testing, the accessibility tree, diff-scoped analysis, a shared finding model, and why advisory feedback beats a late gate.">
+<link rel="stylesheet" href="../assets/css/site.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"
+        onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\(',right:'\\)',display:false},{left:'\\[',right:'\\]',display:true}]});"></script>
+<style>
+  /* Page-local additions only. */
+  .embed-frame {
+    position: relative; width: 100%; aspect-ratio: 16 / 9;
+    margin: 1.4rem 0 0.6rem;
+    border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; background: var(--bg-soft);
+  }
+  .embed-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; }
+</style>
+</head>
+<body>
+
+<header class="site-head">
+  <a class="brand" href="../index.html">Riya Singh Rathore</a>
+  <nav class="site-nav">
+    <a href="../index.html">Writing</a>
+    <a href="../index.html#about">About</a>
+  </nav>
+</header>
+
+<main class="wrap">
+  <p class="backlink"><a href="../index.html">&larr; all writing</a></p>
+
+  <h1>Shift Left: Accessibility at Pull-Request Time</h1>
+
+  <p class="lead">A developer ships a button that a screen reader announces as just "button," with no label. The engineer never hears it, so nothing about their own experience flags the mistake. The idea here is to make a machine hear it, and to make it hear it while the change is still an open pull request rather than weeks later in an audit.</p>
+
+  <h2>Move the check, not the rule</h2>
+  <p>
+    <strong>Shift-left testing</strong> means sliding a quality check as far left as it will go on the timeline
+    that runs from writing code on the left to shipping it on the right. The check itself does not change. Only
+    its position in time does. The checks worth moving are the cheap, mechanical ones, because they never needed
+    a slow, expensive stage to run in the first place. Accessibility linting is exactly that kind of check: it is
+    structural, it is fast, and it does not need the app running to find most of its bugs.
+  </p>
+
+  <h2>What the analyzer actually reads</h2>
+  <p>
+    Assistive technology does not see pixels. A screen reader consumes the <strong>accessibility tree</strong>,
+    a semantic model the browser derives from your markup: this node is a button, its accessible name is "Submit,"
+    this image is decorative, these headings nest in this order. An accessibility analyzer inspects that tree and
+    checks it against the <strong>WCAG</strong> standard, flagging the recurring failure modes: an image with no
+    alternative text, a control with no accessible name, text with too little contrast against its background, a
+    heading level that skips. This work builds on <a href="https://github.com/salesforce/sa11y">Sa11y</a>,
+    Salesforce's open-source accessibility library, which in turn wraps the open-source
+    <a href="https://github.com/dequelabs/axe-core">axe</a> rules engine.
+  </p>
+  <p>
+    The reason these bugs are worth a dedicated gate is that they are <em>invisible to the person who writes
+    them</em>. A sighted engineer with a mouse never notices a missing label, so the defect slips past code
+    review and surfaces only in a manual audit, or from a user who cannot use the product at all. Automating the
+    check turns an invisible, late, expensive problem into a visible, early, cheap one.
+  </p>
+
+  <h2>The architecture</h2>
+  <p>
+    The analyzer is one plug-in among several in a shared <strong>static-analysis stage</strong> that runs on
+    every pull request, before the change lands. The stage discovers its analyzers at startup, hands each one the
+    set of files a change touched, and collects whatever they find. The interesting engineering is in how this
+    particular analyzer keeps itself cheap and how it speaks the stage's common language.
+  </p>
+  <p>
+    <strong>Only look at what changed.</strong> A full accessibility sweep of a large front end is far too slow
+    to sit in front of every commit. So the analyzer never scans the world. It takes the diff, keeps only the
+    files that are actually web UI, narrows further to the area it is responsible for, and ignores everything
+    else. The cost of a run scales with the size of the change, not the size of the codebase, which is what makes
+    it viable at the front of the pipeline.
+  </p>
+  <p>
+    <strong>Hand each file to the engine, get back violations.</strong> For each surviving file the analyzer
+    runs the accessibility engine as a separate process and reads back a list of violations: a rule id, a
+    severity, and where in the file it occurred. Running the engine out of process, behind a timeout, keeps a
+    slow or stuck check from ever hanging the pull request.
+  </p>
+  <p>
+    <strong>Speak the stage's shared language.</strong> Every analyzer in the stage, whatever tool it wraps,
+    emits findings in one common shape: a rule identifier, a severity, a file path, and a line-and-column range.
+    This analyzer's real job is translation. It maps each raw accessibility violation into that shared model and
+    normalizes the file path so the range lines up with the pull request's own view of the file. Because the
+    finding looks like every other finding, the stage can render it directly onto the changed lines without
+    knowing anything about accessibility.
+  </p>
+  <div class="note">
+    <span class="label">Why one shared model matters</span>
+    A common finding format is what lets a pipeline stay open-ended. Add a new analyzer for a new class of bug and
+    nothing downstream has to change, because the new tool emits the same four fields as the old ones. The
+    translation layer is small and boring on purpose. That is the point: the intelligence lives in the engines,
+    and the pipeline only has to understand one uniform result.
+  </div>
+  <p>
+    <strong>Filter the known false positives.</strong> No linter is perfect, and a check that cries wolf gets
+    ignored. So the analyzer carries a small list of known-benign patterns and drops any violation that matches
+    one before reporting. And if the engine is unavailable, it skips silently rather than failing the build.
+    A tool at the front of the pipeline has to <em>fail open</em>: an accessibility checker that can break every
+    commit when it hiccups would be turned off within a week.
+  </p>
+
+  <h2>Advisory on purpose</h2>
+  <p>
+    The analyzer reports but does not block. Its findings come back as advisory comments on the pull request, not
+    as a hard stop that prevents the merge. That is a deliberate design choice, not an unfinished one. The value
+    of shifting left is almost entirely about <strong>feedback latency</strong>, the gap between "I wrote this"
+    and "here is what is wrong with it." The longer that gap, the more the author's mental model of the change
+    decays and the more a two-second fix turns into a re-investigation. Collapsing that gap to minutes, while the
+    author is still looking at the diff, captures most of the benefit. Forcing a block on top of it mostly adds
+    friction and false-positive fights. Put the truth in front of the author early, and let them act on it.
+  </p>
+
+  <h2>The presentation</h2>
+  <figure class="viz-fig wide">
+    <div class="embed-frame">
+      <iframe src="https://docs.google.com/presentation/d/1cxFDLj5mUMld-Sq40ewdZvoS8_bOXB6aiK01O1dBoVA/embed?start=false&loop=false&delayms=5000"
+              title="Shifting an accessibility analyzer left into the static analysis stage, final presentation"
+              allowfullscreen loading="lazy"></iframe>
+    </div>
+    <figcaption>Shifting an accessibility analyzer left into the static-analysis stage. Final presentation.</figcaption>
+  </figure>
+
+</main>
+
+<footer class="site-foot">
+  <span>© 2026 Riya Singh Rathore</span>
+  <span><a href="../index.html">Writing</a> · <a href="../index.html#about">About</a></span>
+</footer>
+
+</body>
+</html>

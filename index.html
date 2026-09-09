@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Riya Singh Rathore</title>
+<meta name="description" content="Writing on math, physics, and computer science: geometric proofs, dynamical systems, algorithms, and a master's thesis on geophysical fluid dynamics.">
+<link rel="stylesheet" href="assets/css/site.css">
+<!-- KaTeX for the inline math in the post deks below -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"
+        onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\(',right:'\\)',display:false},{left:'\\[',right:'\\]',display:true}]});"></script>
+<style>
+  .dark-gist {
+    filter: invert(100%) hue-rotate(180deg);
+  }
+  /* Optional: slightly dim the background so it's not pure black */
+  .dark-gist .gist-data {
+    background-color: #f6f8fa; /* Inverts to a soft dark gray */
+  }
+</style>
+</head>
+<body>
+
+<header class="site-head">
+  <a class="brand" href="index.html">Riya Singh Rathore</a>
+  <nav class="site-nav">
+    <a href="index.html">Writing</a>
+    <a href="index.html#about">About</a>
+  </nav>
+</header>
+
+<main class="wrap">
+
+  <p class="section-label">Writing</p>
+  <ul class="post-list">
+
+    <li>
+      <div class="post-thumb">
+        <iframe src="https://docs.google.com/presentation/d/1cxFDLj5mUMld-Sq40ewdZvoS8_bOXB6aiK01O1dBoVA/embed?start=false&loop=false&delayms=5000"
+                loading="lazy" allowfullscreen
+                title="Sa11y accessibility analyzer in the static analysis pipeline, final presentation"></iframe>
+      </div>
+      <a class="post-title" href="articles/shift-left-static-analysis.html">Shift Left: Accessibility at Pull-Request Time</a>
+      <p class="post-dek">The architecture of an accessibility analyzer that runs before code lands:
+      shift-left testing, the accessibility tree, diff-scoped analysis, one shared finding model for every
+      tool in the pipeline, and why advisory feedback beats a late gate.</p>    </li>
+
+    <li>
+      <div class="post-thumb">
+        <iframe src="articles/fluid-simulation-on-the-gpu/embed.html" loading="lazy"
+                title="Live particle fluid simulation running on the GPU"></iframe>
+      </div>
+      <a class="post-title" href="articles/fluid-simulation-on-the-gpu/">The little fluid that lives in your browser</a>
+      <p class="post-dek">A real fluid you can stir with your mouse, and a careful account of how it
+      works: the incompressible Navier&ndash;Stokes equations, operator splitting, semi-Lagrangian
+      advection, and the pressure projection that keeps it honest, all running live on the GPU.</p>    </li>
+
+    <li>
+      <a class="post-title" href="articles/exclusive-multiples-closed-form.html">The n-th Exclusive Multiple in O(1)</a>
+      <p class="post-dek">Find the n-th integer divisible by $a$ or $b$ but not both, with no search: a
+      closed-form O(1) replacement for binary search over a floor-division count, derived from the
+      period-$ab$ block structure and benchmarked ~20x faster over a million random cases.</p>    </li>
+
+    <li>
+      <div class="post-thumb">
+        <iframe src="https://www.desmos.com/calculator/c21iftnb3m?embed" loading="lazy"
+                title="Interactive hypercube rotating through the six planes of four dimensions"
+                allowfullscreen></iframe>
+      </div>
+      <a class="post-title" href="articles/rotational-mechanics-higher-dimensions.html">Rotation Doesn't Need an Axis</a>
+      <p class="post-dek">Rotation is a property of a hyperplane, not a point or an axis. Once you accept
+      that, the school-physics toolkit (center of mass, moment of inertia, the two axis theorems)
+      follows a solid hemisphere all the way up into $n$ dimensions.</p>    </li>
+
+    <li>
+      <div class="post-thumb">
+        <iframe src="articles/hypercentric-perspective/hypercentrica.html?embed=1" loading="lazy"
+                title="Live hypercentric renderer sweeping from perspective to hypercentric projection"></iframe>
+      </div>
+      <a class="post-title" href="articles/hypercentric-perspective/">Rendering Hypercentric Perspective</a>
+      <p class="post-dek">Ordinary perspective converges every sightline at the eye, so distance
+      shrinks things; hypercentric lenses converge them at a point beyond the scene instead, so
+      distance grows things. A single projection formula unifies perspective, orthographic, and
+      hypercentric cameras as one parameter sweeps through zero, shown here in a live, zoomable WebGL demo.</p>    </li>
+
+  </ul>
+
+  <p class="section-label" id="about">About</p>
+  <div class="dark-gist">
+    <script src="https://gist.github.com/riyasinghrathore/05bc808acd8143631a4d7bed82b9f3be.js"></script>
+  </div>
+
+</main>
+
+<footer class="site-foot">
+  <span>© 2026 Riya Singh Rathore</span>
+  <span><a href="index.html">Writing</a> · <a href="index.html#about">About</a></span>
+</footer>
+
+</body>
+</html>

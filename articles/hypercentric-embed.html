@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hypercentric Perspective: live demo</title>
+<link rel="stylesheet" href="../assets/css/site.css">
+<style>
+  /* Embed-only layout: fill the iframe viewport with just the demo. */
+  html, body {
+    height: 100%;
+    margin: 0;
+    background: var(--canvas-bg);
+  }
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .embed-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    padding: 0.4rem;
+    box-sizing: border-box;
+  }
+  .embed-wrap .viz-fig {
+    margin: 0;
+    width: 100%;
+    max-width: 100%;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
+  .embed-wrap .viz {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+  }
+  .embed-wrap .viz canvas {
+    width: 100%;
+    height: 100%;
+  }
+  .embed-wrap .controls {
+    font-size: 0.78rem;
+    gap: 0.6rem;
+    margin-top: 0.4rem;
+    justify-content: center;
+  }
+  .embed-wrap .controls .sep { color: var(--fg-faint); }
+  .embed-wrap .controls b#val-regime { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<div class="embed-wrap">
+  <figure class="viz-fig">
+    <div class="viz">
+      <canvas id="demo" width="820" height="460" aria-label="Interactive comparison of perspective, orthographic, and hypercentric projection on a row of equal-size posts"></canvas>
+    </div>
+    <div class="controls" id="demo-controls">
+      <label>vergence g <input type="range" id="ctl-g" min="-100" max="100" step="1" value="-100"><span class="val" id="val-g">-1.00</span></label>
+      <button id="btn-play" type="button">Play</button>
+      <span class="sep">·</span>
+      <span>regime: <b id="val-regime">Perspective</b></span>
+      <span class="sep">·</span>
+      <span>converges at <span id="val-c">…</span></span>
+    </div>
+  </figure>
+</div>
+
+<script>
+/* Self-contained animation code: copied verbatim from hypercentric-perspective.html. */
+(function () {
+  const canvas = document.getElementById('demo');
+  const ctx = canvas.getContext('2d');
+  const cssRoot = getComputedStyle(document.documentElement);
+  const COL = {
+    bg: cssRoot.getPropertyValue('--canvas-bg').trim() || '#fff',
+    ink: cssRoot.getPropertyValue('--canvas-ink').trim() || '#111',
+    grid: cssRoot.getPropertyValue('--canvas-grid').trim() || '#ddd',
+    accent: cssRoot.getPropertyValue('--accent').trim() || '#9a3b2e',
+    accentSoft: cssRoot.getPropertyValue('--accent-soft').trim() || '#c76b5a',
+    soft: cssRoot.getPropertyValue('--fg-soft').trim() || '#666',
+    faint: cssRoot.getPropertyValue('--fg-faint').trim() || '#999',
+    sans: (cssRoot.getPropertyValue('--font-sans').trim() || 'sans-serif').split(',')[0].replace(/["']/g, '') + ', sans-serif'
+  };
+
+  const reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+  // ---- scene definition ----
+  const POSTS = [2, 3.5, 5, 6.5, 8];   // depth z of each post, world units
+  const H = 1;                          // world half-height, equal for every post, on purpose
+  const Z_FAR = POSTS[POSTS.length - 1];
+  const Z_C = 1.5 * Z_FAR;              // reference depth defining the convergence point
+
+  function scaleAt(z, g) {
+    if (Math.abs(g) < 1e-6) return 1;   // orthographic: no depth dependence
+    return 1 / (1 - g * z / Z_C);
+  }
+  function convergenceDepth(g) {
+    if (Math.abs(g) < 1e-6) return Infinity;
+    return Z_C / g;
+  }
+  function regimeName(g) {
+    if (g < -0.03) return 'Perspective';
+    if (g > 0.03) return 'Hypercentric';
+    return 'Orthographic (telecentric)';
+  }
+
+  // ---- state ----
+  let g = -1;
+  let playing = false;
+  let t0 = null;
+
+  const slider = document.getElementById('ctl-g');
+  const valOut = document.getElementById('val-g');
+  const regimeOut = document.getElementById('val-regime');
+  const cOut = document.getElementById('val-c');
+  const btnPlay = document.getElementById('btn-play');
+
+  function syncReadout() {
+    valOut.textContent = g.toFixed(2);
+    regimeOut.textContent = regimeName(g);
+    const c = convergenceDepth(g);
+    if (!Number.isFinite(c)) {
+      cOut.textContent = 'infinity (parallel rays)';
+    } else if (c < 0) {
+      cOut.textContent = c.toFixed(1) + ' units behind the camera';
+    } else {
+      cOut.textContent = c.toFixed(1) + ' units, beyond the scene';
+    }
+  }
+
+  slider.addEventListener('input', () => {
+    g = parseInt(slider.value, 10) / 100;
+    playing = false;
+    btnPlay.textContent = 'Play';
+    syncReadout();
+    draw();
+  });
+
+  btnPlay.addEventListener('click', () => {
+    playing = !playing;
+    btnPlay.textContent = playing ? 'Pause' : 'Play';
+    if (playing) { t0 = null; requestAnimationFrame(loop); }
+  });
+
+  function loop(ts) {
+    if (!playing) return;
+    if (t0 === null) t0 = ts;
+    const elapsed = (ts - t0) / 1000;
+    const period = 7; // seconds for a full -1 -> 1 -> -1 sweep
+    const phase = (elapsed % period) / period;
+    g = Math.sin(phase * Math.PI * 2 - Math.PI / 2); // starts at -1, sweeps smoothly
+    slider.value = Math.round(g * 100);
+    syncReadout();
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  // ---- layout helpers ----
+  const marginL = 46, marginR = 46;
+  function depthToX(z, w) {
+    const zMin = -0.8, zMax = Z_FAR + 0.8;
+    const usable = w - marginL - marginR;
+    return marginL + usable * (z - zMin) / (zMax - zMin);
+  }
+
+  function resize() {
+    const dpr = window.devicePixelRatio || 1;
+    const w = canvas.clientWidth || 820;
+    const h = canvas.clientHeight || 460;
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    draw();
+  }
+
+  function draw() {
+    const w = canvas.clientWidth || 820;
+    const h = canvas.clientHeight || 460;
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = COL.bg;
+    ctx.fillRect(0, 0, w, h);
+
+    ctx.font = '600 13px ' + COL.sans;
+    ctx.textAlign = 'left';
+    ctx.fillStyle = COL.accent;
+    ctx.fillText(regimeName(g).toUpperCase() + '   (g = ' + g.toFixed(2) + ')', 4, 16);
+
+    const panelATop = 26;
+    const panelAH = h * 0.46;
+    const panelBTop = panelATop + panelAH + 10;
+    const panelBH = h - panelBTop - 6;
+
+    drawRayPanel(0, panelATop, w, panelAH);
+    drawRenderPanel(0, panelBTop, w, panelBH);
+  }
+
+  function drawRayPanel(x0, y0, w, h) {
+    const baseY = y0 + h * 0.58;
+    ctx.save();
+
+    ctx.strokeStyle = COL.grid;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x0 + marginL - 10, baseY);
+    ctx.lineTo(x0 + w - marginR + 10, baseY);
+    ctx.stroke();
+
+    const camX = depthToX(0, w);
+    ctx.strokeStyle = COL.faint;
+    ctx.beginPath();
+    ctx.moveTo(camX, y0 + 4);
+    ctx.lineTo(camX, y0 + h - 14);
+    ctx.stroke();
+    ctx.fillStyle = COL.faint;
+    ctx.font = '11px ' + COL.sans;
+    ctx.textAlign = 'center';
+    ctx.fillText('camera / image plane', camX, y0 + h - 2);
+
+    const unitScale = Math.min(h * 0.28, 26);
+    const stub = 22;
+
+    for (const z of POSTS) {
+      const px = depthToX(z, w);
+      const s = scaleAt(z, g);
+      const topWorld = baseY - H * unitScale;
+      const botWorld = baseY + H * unitScale;
+      const topImg = baseY - H * s * unitScale;
+      const botImg = baseY + H * s * unitScale;
+
+      ctx.strokeStyle = COL.accentSoft;
+      ctx.lineWidth = 1.3;
+      ctx.beginPath(); ctx.moveTo(px, topWorld); ctx.lineTo(camX, topImg); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(px, botWorld); ctx.lineTo(camX, botImg); ctx.stroke();
+
+      if (Math.abs(g) > 0.02) {
+        const slopeTop = (topImg - topWorld) / (camX - px);
+        const slopeBot = (botImg - botWorld) / (camX - px);
+        ctx.setLineDash([3, 3]);
+        if (g > 0) {
+          // hypercentric: rays keep converging past the post, away from the camera
+          ctx.beginPath(); ctx.moveTo(px, topWorld); ctx.lineTo(px + stub, topWorld + slopeTop * stub); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(px, botWorld); ctx.lineTo(px + stub, botWorld + slopeBot * stub); ctx.stroke();
+        } else {
+          // perspective: rays keep converging past the image plane, behind the camera
+          ctx.beginPath(); ctx.moveTo(camX, topImg); ctx.lineTo(camX - stub, topImg - slopeTop * stub); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(camX, botImg); ctx.lineTo(camX - stub, botImg - slopeBot * stub); ctx.stroke();
+        }
+        ctx.setLineDash([]);
+      }
+
+      ctx.strokeStyle = COL.ink;
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(px, topWorld); ctx.lineTo(px, botWorld); ctx.stroke();
+    }
+
+    const c = convergenceDepth(g);
+    ctx.fillStyle = COL.soft;
+    ctx.font = '11px ' + COL.sans;
+    if (!Number.isFinite(c)) {
+      ctx.textAlign = 'center';
+      ctx.fillText('rays parallel: convergence at infinity', (x0 + w) / 2, y0 + 14);
+    } else if (c > Z_FAR + 0.8) {
+      ctx.textAlign = 'right';
+      ctx.fillText('converges beyond the scene, z ≈ ' + c.toFixed(1) + ' →', x0 + w - marginR + 10, y0 + 14);
+    } else if (c < -0.8) {
+      ctx.textAlign = 'left';
+      ctx.fillText('← converges behind the camera, z ≈ ' + c.toFixed(1), x0 + marginL - 10, y0 + 14);
+    } else {
+      const cx = depthToX(c, w);
+      ctx.beginPath(); ctx.arc(cx, baseY, 3.5, 0, Math.PI * 2); ctx.fillStyle = COL.accent; ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawRenderPanel(x0, y0, w, h) {
+    ctx.save();
+    ctx.strokeStyle = COL.grid;
+    ctx.beginPath(); ctx.moveTo(x0 + 8, y0); ctx.lineTo(x0 + w - 8, y0); ctx.stroke();
+
+    const baseline = y0 + h - 12;
+    const n = POSTS.length;
+    const slotW = (w - 40) / n;
+    const baseSize = Math.min(slotW * 0.38, h * 0.16);
+
+    ctx.textAlign = 'center';
+    for (let i = 0; i < n; i++) {
+      const z = POSTS[i];
+      const s = scaleAt(z, g);
+      const cx = x0 + 24 + slotW * (i + 0.5);
+      const boxW = baseSize * 0.75 * s;
+      const boxH = baseSize * 1.5 * s;
+      const top = baseline - boxH;
+
+      const topFace = Math.max(0, g) * boxH * 0.55;
+      const sideFace = Math.max(0, g) * boxW * 0.4;
+
+      if (sideFace > 0.5) {
+        ctx.fillStyle = COL.accentSoft;
+        ctx.globalAlpha = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(cx + boxW / 2, top);
+        ctx.lineTo(cx + boxW / 2 + sideFace, top + topFace * 0.5);
+        ctx.lineTo(cx + boxW / 2 + sideFace, baseline + topFace * 0.5);
+        ctx.lineTo(cx + boxW / 2, baseline);
+        ctx.closePath();
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+      if (topFace > 0.5) {
+        ctx.fillStyle = COL.accentSoft;
+        ctx.globalAlpha = 0.7;
+        ctx.beginPath();
+        ctx.moveTo(cx - boxW / 2, top);
+        ctx.lineTo(cx - boxW / 2 + topFace * 0.6, top - topFace);
+        ctx.lineTo(cx + boxW / 2 + topFace * 0.6, top - topFace);
+        ctx.lineTo(cx + boxW / 2, top);
+        ctx.closePath();
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+
+      ctx.fillStyle = COL.ink;
+      ctx.globalAlpha = 0.12;
+      ctx.fillRect(cx - boxW / 2, top, boxW, boxH);
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = COL.ink;
+      ctx.lineWidth = 1.6;
+      ctx.strokeRect(cx - boxW / 2, top, boxW, boxH);
+
+      ctx.fillStyle = COL.faint;
+      ctx.font = '10px ' + COL.sans;
+      ctx.fillText('z=' + z, cx, baseline + 16);
+    }
+    ctx.restore();
+  }
+
+  window.addEventListener('resize', resize);
+  syncReadout();
+  resize();
+
+  // Respect reduced motion: never auto-start the sweep. The Play button
+  // still works if a user explicitly asks for it; only the unsolicited
+  // autoplay is suppressed.
+  if (reduceMotion) { playing = false; }
+})();
+</script>
+</body>
+</html>

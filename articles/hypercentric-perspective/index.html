@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rendering Hypercentric Perspective</title>
+<meta name="description" content="Non-Euclidean games render impossible spaces; a hypercentric lens renders an impossible camera, where farther objects grow instead of shrink. One bounded parameter unifies perspective, orthographic, and hypercentric projection, and it is a single line in a vertex shader. Live WebGL2 demo.">
+<link rel="stylesheet" href="../../assets/css/site.css">
+<!-- KaTeX for math typesetting -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"
+        onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\(',right:'\\)',display:false},{left:'\\[',right:'\\]',display:true}]});"></script>
+<style>
+  /* Page-local additions only; the shared site.css is untouched. */
+  .panel-note { font-size: 0.82rem; }
+
+  /* Two example photos from the source question, side by side. */
+  .photo-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin: 0.2rem 0; }
+  .photo-row img { width: 100%; height: auto; display: block;
+    border: 1px solid var(--rule); border-radius: 6px; background: var(--bg-soft); }
+  @media (max-width: 34rem) { .photo-row { grid-template-columns: 1fr; } }
+
+  /* The projection-model diagram from the referenced paper (light figure). */
+  .paper-fig img { max-width: 420px; width: 100%; height: auto; display: block; margin: 0 auto;
+    border: 1px solid var(--rule); border-radius: 6px; background: #fff; padding: 0.5rem; }
+
+  /* The xkcd comic tying the effect to cosmology (dark figure, no white pad). */
+  .comic-fig img { max-width: 640px; width: 100%; height: auto; display: block; margin: 0 auto;
+    border: 1px solid var(--rule); border-radius: 6px; }
+
+  /* Code block, in the site's dark palette. */
+  pre.code { background: var(--bg-soft); border: 1px solid var(--rule); border-radius: 8px;
+    padding: 0.9rem 1.1rem; overflow-x: auto; font-family: var(--font-mono);
+    font-size: 0.8rem; line-height: 1.55; color: var(--fg); margin: 1.1rem 0 1.5rem; }
+  pre.code .cmt { color: var(--fg-faint); }
+
+  /* Live engine embed: full interactive WebGL2 viewport (hypercentrica.html) in a wide frame. */
+  .engine-frame { background: var(--canvas-bg); border: 1px solid var(--rule);
+    border-radius: 8px; padding: 0.5rem; overflow: hidden; }
+  .engine-frame iframe { display: block; width: 100%; border: 0; border-radius: 5px;
+    background: var(--canvas-bg); aspect-ratio: 3 / 2; min-height: 600px; }
+  @media (max-width: 40rem) {
+    .engine-frame iframe { aspect-ratio: auto; height: 82vh; min-height: 500px; }
+  }
+
+  /* Controls legend: a key to action list in the site's dark palette. */
+  .control-legend { font-family: var(--font-sans); margin: 1.4rem 0 1.9rem;
+    padding: 1rem 1.2rem 1.15rem; background: var(--bg-soft);
+    border: 1px solid var(--rule); border-radius: 8px; }
+  .control-legend .cl-head { font-size: 0.72rem; letter-spacing: 0.07em; text-transform: uppercase;
+    font-weight: 620; color: var(--accent); margin: 0 0 0.85rem; }
+  .control-legend .cl-grid { display: grid; grid-template-columns: max-content 1fr;
+    gap: 0.55rem 1.1rem; margin: 0; align-items: baseline; }
+  .control-legend dt { justify-self: start; white-space: nowrap; font-family: var(--font-mono);
+    font-size: 0.8rem; color: var(--fg); background: var(--canvas-bg);
+    border: 1px solid var(--rule); border-radius: 5px; padding: 0.15em 0.55em; }
+  .control-legend dt .cl-var { color: var(--accent); font-style: normal; }
+  .control-legend dd { margin: 0; font-size: 0.9rem; line-height: 1.5; color: var(--fg-soft); }
+  .control-legend dd .cl-range { font-family: var(--font-mono); font-size: 0.78rem;
+    color: var(--fg-faint); white-space: nowrap; }
+  @media (max-width: 30rem) {
+    .control-legend .cl-grid { grid-template-columns: 1fr; gap: 0.15rem 0; }
+    .control-legend dt { margin-top: 0.7rem; }
+    .control-legend dt:first-of-type { margin-top: 0; }
+  }
+</style>
+</head>
+<body>
+
+<header class="site-head">
+  <a class="brand" href="../../index.html">Riya Singh Rathore</a>
+  <nav class="site-nav">
+    <a href="../../index.html">Writing</a>
+    <a href="../../index.html#about">About</a>
+  </nav>
+</header>
+
+<main class="wrap">
+  <p class="backlink"><a href="../../index.html">&larr; all writing</a></p>
+
+  <h1>Rendering Hypercentric Perspective</h1>
+
+  <p class="lead">Non-Euclidean games (hyperbolic rooms, spherical worlds, corridors stitched together by
+  portals) work because you can render an impossible <em>space</em>. This started as
+  <a href="https://computergraphics.stackexchange.com/questions/12187/rendering-hypercentric-perspective" target="_blank" rel="noopener">a question I asked on Computer Graphics Stack Exchange</a>:
+  can you render an impossible <em>camera</em>? A <strong>hypercentric</strong> lens is exactly that. Objects
+  farther from it come out <em>larger</em>, not smaller, the reverse of every eye and every ordinary camera.
+  It turns out one bounded dial unifies perspective, orthographic, and hypercentric projection, and the whole
+  thing is a single line in a vertex shader.</p>
+
+  <p>
+    The framing came straight from those games: after seeing how deeply non-Euclidean spaces read on screen, I
+    wondered whether other unconventional perspectives could be rendered the same way. Hypercentric perspective
+    is the cleanest example. In a normal camera every sightline meets at the eye, so distance shrinks things; in
+    a hypercentric lens the sightlines converge at a point <em>beyond</em> the scene, so distance grows them,
+    and a single fixed viewpoint can even see a little way over the tops and down the far sides of objects.
+    Because it needs bulky optics (a large lens and a long throw), only a handful of real photographs exist:
+  </p>
+
+  <figure class="viz-fig">
+    <div class="photo-row">
+      <img src="img/domino-hypercentric.jpg" alt="A domino photographed through a hypercentric lens: its top face and both sides are visible at once" loading="lazy">
+      <img src="img/die-perspective-vs-hypercentric.jpg" alt="A die in ordinary perspective (left) versus hypercentric (middle and right), where five faces are visible from one viewpoint" loading="lazy">
+    </div>
+    <figcaption class="panel-note">
+      Real hypercentric shots: farther parts render bigger, and top and far faces stay visible from straight on.
+      Images from the source question on Computer Graphics Stack Exchange&nbsp;#12187.
+    </figcaption>
+  </figure>
+
+  <h2>The math</h2>
+  <p>
+    Put the camera at the origin looking down $+z$, so front-depth $d>0$ grows away from the eye. Model every
+    sightline as one cone whose apex sits on the axis at depth $d_c$. By similar triangles, a feature at depth
+    $d$ lands on screen at a size proportional to the apex-to-image-plane distance over the apex-to-feature
+    distance. Fixing a reference depth $Z_c$ just past the scene and a near plane $d_0$ that stays unmagnified,
+    and writing the one bounded dial $g = Z_c/d_c \in [-1,1]$, the whole family collapses to a single scale:
+  </p>
+  <p>$$ s(d) \;=\; \frac{d_c - d_0}{\,d_c - d\,} \;=\; \frac{1 - g\,d_0/Z_c}{\,1 - g\,d/Z_c\,} $$</p>
+  <p>
+    That one expression is all three cameras. $g<0$ puts the apex behind the eye ($d_c<0$), so $s$ falls with
+    depth: ordinary <strong>perspective</strong>, far shrinks. $g=0$ sends the apex to infinity, $s\equiv 1$:
+    <strong>orthographic</strong>, size independent of depth. $g>0$ puts the apex beyond the scene
+    ($d_c = Z_c/g > d_{\text{far}}$), so $s$ <em>rises</em> with depth: <strong>hypercentric</strong>, far
+    grows. Orthographic is just the single point where the sign of the depth dependence flips.
+  </p>
+  <p>
+    The physically-calibrated version of the same idea (from the paper the accepted answer points to) shares the
+    same reciprocal-in-depth ($1/z$) structure, $(x_u, y_u) = \dfrac{c}{z_k}\,(x_k, y_k)$ for a camera-space
+    point, then adds a radial lens-distortion term before mapping to pixels:
+  </p>
+  <figure class="paper-fig">
+    <img src="img/projection-model.png" alt="Diagram of the hypercentric projection model: an object point projected through the projection center onto the image plane, with the projection distance c < 0" loading="lazy">
+    <figcaption class="panel-note">
+      The projection-model overview from the referenced paper, as posted in the answer to CG-SE&nbsp;#12187.
+    </figcaption>
+  </figure>
+
+  <h2>Some code</h2>
+  <p>
+    Because $s(d)$ multiplies the lateral coordinates directly, there is no projection matrix and no perspective
+    divide: you set clip-space $w=1$ and scale $x,y$ by $s(d)$ in the vertex shader. Depth is written as a plain
+    ramp of true front-depth, independent of $g$, so the z-buffer always orders by real distance and the scene
+    never turns inside out as the apex slides through infinity. That is the whole projection, the core of the
+    engine below (which adds only the usual fragment shading and clamping around it):
+  </p>
+  <pre class="code">float d = -viewPos.z;                          <span class="cmt">// front-depth, &gt;0 ahead of the camera</span>
+float s = (1.0 - g*d0/Zc) / (1.0 - g*d/Zc);    <span class="cmt">// one scale, all three regimes</span>
+
+gl_Position = vec4(
+    focal * viewPos.x * s / aspect,            <span class="cmt">// x,y carry the vergence</span>
+    focal * viewPos.y * s,
+    (d - lo) / (hi - lo) * 2.0 - 1.0,          <span class="cmt">// depth: true distance, g-independent</span>
+    1.0);                                      <span class="cmt">// w = 1, no perspective divide</span></pre>
+  <p>
+    There is a second route, useful if you are stuck in an engine whose camera you cannot reach into. As Nathan
+    Reed points out in the thread, a hypercentric camera's rays are just an ordinary perspective camera's rays
+    reversed. So you can render one without touching the projection: put a normal camera at the convergence
+    point aimed back through the scene, then reverse the depth test (or swap near and far) and flip backface
+    culling to match. The tradeoff is that anything past the convergence point is clipped unless you add a
+    second pass. The shader above takes the direct route instead, and drives the live renderer below.
+  </p>
+
+  <h2>An engine you can drive</h2>
+  <p>
+    Which brings it back to where the question began. Non-Euclidean game engines (like CodeParade's
+    <a href="https://github.com/HackerPoet/NonEuclidean" target="_blank" rel="noopener">non-Euclidean rendering engine</a>)
+    hand you a strange geometry and simply let you move around inside it; this does the same for a strange camera. Below, embedded whole, is
+    <strong>Hypercentrica</strong>: a self-contained WebGL2 scene, no libraries, running the shader above. It
+    sweeps <b>vergence&nbsp;g</b> on its own, so watch the far side of the model stop shrinking and start growing
+    as the apex crosses infinity at $g=0$, with the cottage's top and back faces swelling into view. Drag to
+    orbit, scroll or pinch to zoom, drop in your own <code>.obj</code>, or grab the <b>g</b> slider yourself and
+    use <b>Pause</b> / <b>Play</b> to stop and restart the sweep.
+  </p>
+
+  <figure class="viz-fig wide">
+    <div class="engine-frame">
+      <iframe
+        src="hypercentrica.html"
+        title="Hypercentrica, a live, dependency-free WebGL2 hypercentric-projection engine"
+        loading="lazy"
+        allow="fullscreen"
+        allowfullscreen></iframe>
+    </div>
+    <figcaption class="panel-note">
+      Hypercentrica, embedded live, the same self-contained file that runs standalone. Click into the viewport
+      and drag to orbit; scroll or pinch to zoom. Use <b>Fullscreen</b> for a bigger view, and click either
+      panel's title bar to collapse it so nothing covers the model. The right panel prints the live 4&times;4
+      matrix $M(d)$ driving every vertex, recomputed each frame.
+    </figcaption>
+  </figure>
+
+  <div class="control-legend" aria-label="Hypercentrica engine controls">
+    <p class="cl-head">Controls</p>
+    <dl class="cl-grid">
+      <dt>Drag</dt>
+        <dd>Orbit the camera around the model.</dd>
+      <dt>Scroll / pinch</dt>
+        <dd>Zoom in and out.</dd>
+      <dt>vergence <span class="cl-var">g</span></dt>
+        <dd>The one dial that matters: slide the apex from behind the eye, out to infinity, and past the scene.
+          Perspective&nbsp;&rarr;&nbsp;orthographic&nbsp;&rarr;&nbsp;hypercentric. <span class="cl-range">&minus;1 &hellip; 1</span></dd>
+      <dt><span class="cl-var">Z_c</span>, <span class="cl-var">f</span>, <span class="cl-var">d&#8320;</span>, sample <span class="cl-var">d</span></dt>
+        <dd>Reference depth, zoom, the unmagnified near plane, and the depth the printed matrix is read at.</dd>
+      <dt>Fullscreen</dt>
+        <dd>Expand the viewport to the whole screen.</dd>
+      <dt>Panel titles</dt>
+        <dd>Click <b>Hypercentrica</b> or the matrix header to collapse that panel.</dd>
+      <dt>Pause / Play, Cottage, Load .obj</dt>
+        <dd>Stop or restart the automatic $g$ sweep; restore the default model; or load your own mesh.</dd>
+    </dl>
+  </div>
+
+  <h2>The same trick, at cosmic scale</h2>
+  <p>
+    Far meaning bigger is not only a lens trick; nature runs it at the largest scale there is. Because space was
+    smaller when a very distant galaxy emitted its light, that galaxy sat physically close to us at the moment of
+    emission, so it now subtends a <em>wider</em> angle on the sky than a merely-distant one. Past a redshift of
+    roughly $1.5$, more distant galaxies stop shrinking and start looking bigger again. Astronomers call it the
+    <strong>angular diameter turnaround</strong>, and it is the exact cosmological echo of the $g>0$ regime above:
+    sightlines that effectively converge somewhere beyond the source, so distance magnifies instead of shrinks. I
+    asked whether that turnaround might resolve one large-scale-structure puzzle in
+    <a href="https://astronomy.stackexchange.com/questions/49602/does-angular-diameter-turnaround-point-solve-the-great-wall-problem" target="_blank" rel="noopener">a question on Astronomy Stack Exchange</a>.
+  </p>
+
+  <figure class="comic-fig">
+    <img src="img/xkcd-2622-angular-diameter-turnaround.png" alt="xkcd comic 2622: rows of phone-sized galaxies receding into the distance, the nearest ones small, the farthest ones large, dim, and red, illustrating that very far objects appear bigger" loading="lazy">
+    <figcaption class="panel-note">
+      xkcd&nbsp;#2622, <a href="https://xkcd.com/2622/" target="_blank" rel="noopener">Angular Diameter Turnaround</a>
+      (Randall Munroe, CC&nbsp;BY-NC&nbsp;2.5). Nearby is small; far is smaller; but really far is big again.
+    </figcaption>
+  </figure>
+
+  <p>
+    That makes the engine a ready-made sandbox for the effect. The same $s(d)>1$ machinery that swells the
+    cottage's far wall is what an angular-diameter curve needs: swap the fixed geometric apex for a depth that
+    tracks a redshift relation, and Hypercentrica becomes a toy model of the sky JWST sees looking back toward the
+    big bang. That is the next thing I want to build on top of it.
+  </p>
+
+  <div class="note">
+    <span class="label">Get the code</span>
+    Hypercentrica is a standalone, dependency-free WebGL2 renderer: one HTML file, no build step, no libraries,
+    with the default model inlined so the standalone file and this embed render identically. The projection
+    follows the accepted answer to
+    <a href="https://computergraphics.stackexchange.com/questions/12187/rendering-hypercentric-perspective" target="_blank" rel="noopener">Computer Graphics Stack Exchange&nbsp;#12187</a>.
+    MIT-licensed.
+  </div>
+
+</main>
+
+<footer class="site-foot">
+  <span>© 2026 Riya Singh Rathore</span>
+  <span><a href="../../index.html">Writing</a> · <a href="../../index.html#about">About</a></span>
+</footer>
+
+</body>
+</html>
